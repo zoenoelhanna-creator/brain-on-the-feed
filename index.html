@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Brain on the Feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=DM+Serif+Display:ital@1&display=swap">
+<style>
+/* Layout: the app (nav rail + endless feed) is always a white screen; the brain and activity panel sits
+   beside it on a contrasting grey that follows the viewer's theme. */
+:root{
+  /* the app itself: always light, like a phone screen */
+  --app-bg:#FFFFFF; --app-fg:#000000; --app-soft:#737373; --app-line:#DBDBDB; --app-hover:#F2F2F2;
+  --link:#0095F6; --heart:#FF3040;
+  /* the info panel around it */
+  --bg:#E8EBF0; --card:#FFFFFF; --fg:#15171C; --soft:#5E6470; --line:#D3D8E0; --elev:#E3E6EB;
+  --overlay:rgba(12,14,18,.6); --toast:#15171C; --toast-fg:#FFFFFF;
+  /* chemicals and post art */
+  --pink:#FF48B0; --orange:#FF6C2F; --yellow:#FFE600; --teal:#00838A; --blue:#0078BF; --gold:#C9A227; --lime:#7BE041; --purple:#7C4DDB; --ink:#111111;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --hand:"Gochi Hand","Comic Sans MS","Marker Felt",cursive;
+  --serif:"DM Serif Display",Georgia,serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E0F12; --card:#1B1D22; --fg:#F1F2F4; --soft:#A2A7B0; --line:#2C2F36; --elev:#2C2F36;
+  --overlay:rgba(0,0,0,.75); --toast:#F1F2F4; --toast-fg:#000000; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E0F12; --card:#1B1D22; --fg:#F1F2F4; --soft:#A2A7B0; --line:#2C2F36; --elev:#2C2F36;
+  --overlay:rgba(0,0,0,.75); --toast:#F1F2F4; --toast-fg:#000000; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:14px;line-height:18px}
+button,input{font:inherit;color:inherit}
+svg.i{width:24px;height:24px;flex:0 0 auto;display:block}
+
+/* ---------- the app: left rail ---------- */
+.rail{position:fixed;left:0;top:0;bottom:0;width:244px;border-right:1px solid var(--app-line);background:var(--app-bg);color:var(--app-fg);z-index:5;
+  padding:calc(env(safe-area-inset-top,0px) + 8px) 12px calc(env(safe-area-inset-bottom,0px) + 20px);display:flex;flex-direction:column;gap:2px}
+.wm{font-weight:700;font-size:24px;letter-spacing:-.045em;line-height:1}
+.rail .wm{padding:26px 12px 22px}
+.rail .wm .short{display:none}
+.item{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:16px;padding:12px;border-radius:8px;font-size:16px;line-height:20px;position:relative}
+.item.on{font-weight:700}
+button.item{cursor:pointer}
+.item:hover{background:var(--app-hover)}
+.item:focus-visible{outline:2px solid var(--link)}
+.rail .grow{flex:1}
+.me{width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center;flex:0 0 auto}
+.dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--heart);border:2px solid var(--app-bg)}
+.item .dot{left:30px;top:9px}
+@media (max-width:1263px){.rail{width:72px}.rail .lbl{display:none}.rail .wm .full{display:none}.rail .wm .short{display:block;font-size:26px}.rail .wm{padding:26px 12px 22px 14px}}
+@media (max-width:999px){.rail{display:none}}
+
+/* ---------- the app: mobile chrome ---------- */
+.mtop,.crewbar,.mbot{display:none}
+@media (max-width:999px){
+  .mtop{display:flex;position:sticky;top:0;z-index:5;background:var(--app-bg);color:var(--app-fg);border-bottom:1px solid var(--app-line);align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;gap:16px}
+  .mtop .r{display:flex;align-items:center;gap:16px}
+  .mtop .ic{position:relative}
+  .mtop .dot{right:-3px;top:-2px}
+  .mtop .count{color:var(--app-soft);font-size:13px;font-variant-numeric:tabular-nums}
+  .crewbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 49px);z-index:4;background:var(--bg);color:var(--fg);border-bottom:1px solid var(--line);padding:8px 12px}
+  .cb{display:grid;justify-items:center;gap:3px;min-width:0;text-align:center}
+  .cb .av{width:30px;height:30px}
+  .cb b{font-size:10px;overflow-wrap:anywhere;font-weight:600;line-height:13px}
+  .cb b span{font-weight:400;color:var(--soft);font-variant-numeric:tabular-nums}
+  .cb .bar{width:80%}
+  .mbot{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--app-bg);color:var(--app-fg);border-top:1px solid var(--app-line);justify-content:space-around;align-items:center;padding:10px 8px calc(env(safe-area-inset-bottom,0px) + 10px)}
+}
+.linkbtn{all:unset;cursor:pointer;color:var(--link);font-weight:600;font-size:14px}
+.linkbtn:hover{opacity:.7}
+.linkbtn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+
+/* ---------- columns ---------- */
+main{display:flex;min-height:100vh}
+@media (max-width:999px){body{background:var(--app-bg)}}
+.feedwrap{flex:1;min-width:0;background:var(--app-bg);color:var(--app-fg);display:flex;justify-content:center;padding-inline:16px;padding-block:22px 80px}
+.feedcol{width:100%;max-width:470px;min-width:0}
+@media (max-width:999px){.feedwrap{padding-top:8px}}
+
+.apphead{display:flex;justify-content:space-between;align-items:center;padding:4px 4px 18px}
+.apphead .r{display:flex;gap:20px;align-items:center}
+.apphead .ic{position:relative}
+.apphead .dot{right:-3px;top:-2px}
+@media (max-width:999px){.apphead{display:none}}
+/* stories */
+.stories{display:flex;gap:16px;padding:4px 0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:8px}
+.stories::-webkit-scrollbar{display:none}
+.story{display:grid;justify-items:center;gap:5px;width:66px;flex:0 0 auto}
+.ring{width:66px;height:66px;border-radius:50%;padding:2px;background:linear-gradient(45deg,var(--blue),var(--pink))}
+.ring.seen{background:var(--app-line)}
+.ring span{width:100%;height:100%;border-radius:50%;border:3px solid var(--app-bg);display:grid;place-items:center;font-weight:700;font-size:15px;color:#fff}
+.story small{font-size:12px;max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* posts */
+.ig{border-bottom:1px solid var(--app-line);padding-bottom:16px;margin-bottom:12px}
+.ig-h{display:flex;align-items:center;gap:10px;padding:0 4px 12px}
+.pav{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:0 0 auto}
+.ig-h .n{min-width:0;line-height:18px}
+.ig-h b{font-weight:600}
+.ig-h .t{color:var(--app-soft)}
+.ig-h small{display:block;font-size:12px;line-height:16px}
+.ig-h .more{margin-left:auto}
+.media{all:unset;container-type:inline-size;box-sizing:border-box;display:block;width:100%;aspect-ratio:1/1;max-width:100%;position:relative;cursor:pointer;overflow:hidden;border-radius:4px;border:1px solid var(--app-line);user-select:none}
+@media (max-width:999px){.media{border-radius:0;border-inline:0}}
+.media:focus-visible{outline:3px solid var(--link);outline-offset:-3px}
+.bigheart{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0}
+.bigheart svg{width:96px;height:96px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.35))}
+.pop .bigheart{animation:pop .75s ease both}
+@keyframes pop{0%{opacity:0;transform:scale(.3)}25%{opacity:1;transform:scale(1.15)}45%{transform:scale(.95)}75%{opacity:1;transform:scale(1)}100%{opacity:0}}
+.actions{display:flex;align-items:center;gap:16px;padding:8px 2px 6px;position:relative}
+.actions button{all:unset;cursor:pointer;display:grid;place-items:center}
+.actions button:hover{opacity:.55}
+.actions button:focus-visible{outline:2px solid var(--link);outline-offset:3px;border-radius:4px}
+.liked .like path{fill:var(--heart);stroke:var(--heart)}
+.pop .like{animation:tap .3s ease}
+@keyframes tap{50%{transform:scale(1.25)}}
+.actions .save{margin-left:auto}
+.cdots{position:absolute;left:50%;transform:translateX(-50%);display:flex;gap:4px}
+.cdots i{width:6px;height:6px;border-radius:50%;background:#A8A8A8;opacity:.6}
+.cdots i:first-child{background:var(--link);opacity:1}
+.ig p{margin:0;padding:0 2px}
+.ig .likes{font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.ig .cap{margin-top:6px}
+.ig .cap b{font-weight:600}
+.ig .vc,.ig .add{color:var(--app-soft);margin-top:6px}
+
+.caught{display:grid;justify-items:center;gap:6px;text-align:center;padding:28px 16px 30px;border-bottom:1px solid var(--app-line);margin-bottom:16px}
+.caught svg{width:72px;height:72px}
+.caught b{font-size:18px;line-height:24px;font-weight:600}
+.caught span{color:var(--app-soft)}
+.caught .linkbtn{margin-top:6px}
+.sugg-h{font-weight:600;font-size:16px;padding:0 4px 14px}
+.loading{display:grid;place-items:center;padding:24px}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--app-line);border-top-color:var(--app-soft);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* post artwork, one look per kind of account */
+.art{position:absolute;inset:0;display:grid;padding:26px;text-align:left}
+.art.outrage{background:#111;color:#fff;align-content:space-between}
+.art.outrage .tag{justify-self:start;background:var(--heart);color:#fff;font:800 12px/1 var(--ui);letter-spacing:.14em;padding:6px 8px}
+.art.outrage .hl{font:800 clamp(22px,8cqw,38px)/1.02 var(--ui);text-transform:uppercase;letter-spacing:-.02em}
+.art.outrage .src{font:400 12px var(--ui);color:#aaa}
+.art.cute{background-color:var(--pink);background-image:radial-gradient(rgba(17,17,17,.18) 1.3px,transparent 1.7px);background-size:7px 7px;color:var(--ink);place-items:center;text-align:center}
+.art.cute .hl{font:400 clamp(24px,8.6cqw,42px)/1.05 var(--hand);background:#fff;padding:10px 16px;transform:rotate(-3deg);box-shadow:5px 5px 0 var(--ink);max-width:88%}
+.reel{position:absolute;top:12px;right:12px;display:flex;gap:4px;align-items:center;color:#fff;font:600 12px var(--ui);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:12px}
+.art.compare{background:linear-gradient(160deg,#F6D9C6 0%,#E9B7A8 45%,#B98C9E 100%);color:#fff;align-content:end}
+.art.compare .hl{font:italic 400 clamp(26px,9cqw,44px)/1.02 var(--serif);text-shadow:0 2px 14px rgba(80,30,40,.35)}
+.art.compare .sun{position:absolute;right:18%;top:14%;width:34%;aspect-ratio:1;max-width:100%;border-radius:50%;background:radial-gradient(circle,#FFF6E6 0 55%,rgba(255,246,230,0) 70%)}
+.art.friends{padding:0}
+.art.friends svg{width:100%;height:100%;display:block}
+.art.friends .hl{position:absolute;left:16px;bottom:14px;font:700 15px var(--ui);color:#fff;background:rgba(0,0,0,.4);padding:4px 10px;border-radius:14px}
+.art.learn{background-color:var(--blue);background-image:linear-gradient(rgba(255,255,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.12) 1px,transparent 1px);background-size:22px 22px;color:#fff;align-content:space-between}
+.art.learn .num{font:700 13px var(--ui);opacity:.85}
+.art.learn .hl{font:800 clamp(24px,8.2cqw,40px)/1.05 var(--ui);letter-spacing:-.02em}
+.art.learn .swipe{font:700 13px var(--ui);justify-self:end}
+
+
+/* brain rot: loud, loud, loud */
+.art.rot{background:repeating-linear-gradient(135deg,#7BE041 0 22px,#B36BFF 22px 44px);place-items:center;text-align:center;overflow:hidden}
+.art.rot .hl{font:900 clamp(28px,11cqw,56px)/.95 Impact,"Arial Black",var(--ui);text-transform:uppercase;color:#fff;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:4px 4px 0 #000;max-width:92%;animation:jiggle 1.2s ease-in-out infinite}
+@keyframes jiggle{0%,100%{transform:rotate(-3deg) scale(1)}50%{transform:rotate(3deg) scale(1.06)}}
+.art.rot .stk{position:absolute;font:900 clamp(12px,3.8cqw,18px)/1 Impact,"Arial Black",var(--ui);color:#000;padding:1.6cqw 2.6cqw;border:2px solid #000;box-shadow:3px 3px 0 #000}
+.art.rot .s1{top:6cqw;left:6cqw;transform:rotate(-8deg)}
+.art.rot .s2{bottom:7cqw;right:6cqw;transform:rotate(6deg)}
+@media (prefers-reduced-motion:reduce){.art.rot .hl{animation:none}}
+/* screenshot-style posts */
+.art.shot{place-items:center;padding:7cqw}
+.sc{background:#fff;color:#0F1419;border-radius:16px;padding:5cqw 5.5cqw;width:100%;box-sizing:border-box;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:var(--ui);text-align:left}
+.tw-h{display:flex;gap:10px;align-items:center}
+.tw-av{width:clamp(30px,9cqw,42px);height:clamp(30px,9cqw,42px);border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex:0 0 auto}
+.tw-h b{display:block;font-size:clamp(13px,3.6cqw,17px);line-height:1.2}
+.tw-h small{color:#536471;font-size:clamp(12px,3.2cqw,15px)}
+.tw p{margin:3.5cqw 0 !important;padding:0 !important;font-size:clamp(15px,4.7cqw,22px);line-height:1.3}
+.tw > small{color:#536471;font-size:clamp(11px,3cqw,14px)}
+.q{display:block;font-size:clamp(16px,5cqw,24px);line-height:1.2;margin-bottom:4cqw;letter-spacing:-.01em}
+.opt{position:relative;border-radius:8px;overflow:hidden;background:#EFF3F4;display:flex;justify-content:space-between;padding:2.6cqw 3.4cqw;margin-bottom:2.2cqw;font-size:clamp(13px,3.8cqw,18px)}
+.opt i{position:absolute;inset:0 auto 0 0;background:#CFD9DE}
+.opt.win i{background:#8ECDF8}
+.opt span,.opt em{position:relative;font-style:normal}
+.opt.win span,.opt.win em{font-weight:700}
+.poll > small{color:#536471;font-size:clamp(11px,3cqw,14px)}
+.list ol{margin:0;padding-left:1.3em;display:grid;gap:2.4cqw;font-size:clamp(14px,4.3cqw,20px);line-height:1.25}
+.list li::marker{font-weight:700}
+.chatbg{background:#F2F2F7}
+.chat{width:100%;display:flex;flex-direction:column;gap:2.2cqw;font-family:var(--ui)}
+.chat-h{display:flex;flex-direction:column;align-items:center;gap:4px;color:#111;font-size:clamp(12px,3.4cqw,15px);margin-bottom:3cqw}
+.bub{max-width:76%;padding:2.4cqw 4cqw;border-radius:20px;font-size:clamp(14px,4.4cqw,20px);line-height:1.25}
+.bub.l{align-self:flex-start;background:#E5E5EA;color:#000;border-bottom-left-radius:6px}
+.bub.r{align-self:flex-end;background:#0B84FF;color:#fff;border-bottom-right-radius:6px}
+.art.notes{background:#FFFDF7;color:#1C1C1E;align-content:start;gap:1.6cqw;padding:6cqw 8cqw;font-family:var(--ui)}
+.notes-h{color:#D9A400;font-weight:600;font-size:clamp(14px,4cqw,18px);margin-bottom:3cqw}
+.art.notes b{font-size:clamp(20px,6.4cqw,30px);margin-bottom:2cqw}
+.art.notes span{font-size:clamp(15px,4.6cqw,22px);line-height:1.3}
+.rcpt{background:#FAFAF6;color:#111;font-family:"Courier New",ui-monospace,monospace;width:78%;padding:6cqw 6cqw 7cqw;display:grid;gap:1.8cqw;font-size:clamp(12px,3.9cqw,18px);box-shadow:0 10px 30px rgba(0,0,0,.4);transform:rotate(-2deg)}
+.rcpt b{text-align:center;letter-spacing:.1em}
+.rcpt .dash{border-top:2px dashed #111;margin:1cqw 0}
+.rl{display:flex;justify-content:space-between;gap:10px}
+.rl.tot{font-weight:700}
+.thx{text-align:center;font-size:.8em;margin-top:2cqw}
+
+
+/* more post formats */
+.art.news{background:#fff;color:#111;padding:0;align-content:start;grid-template-rows:auto 1fr auto auto;font-family:var(--ui)}
+.nw-top{display:flex;justify-content:space-between;align-items:center;padding:4cqw 5cqw}
+.nw-top b{font-family:var(--serif);font-size:clamp(15px,4.6cqw,22px)}
+.nw-img{min-height:0;margin:0 5cqw;border-radius:8px}
+.nw-t{padding:4cqw 5cqw 1.5cqw;font-size:clamp(17px,5.4cqw,26px);line-height:1.18;letter-spacing:-.01em}
+.art.news small{padding:0 5cqw 5cqw;color:#666;font-size:clamp(11px,3.1cqw,14px)}
+.cm{padding:5cqw}
+.cm-row{display:flex;gap:3cqw;align-items:flex-start}
+.cm-row b{font-size:clamp(13px,3.7cqw,17px)}
+.cm-t{color:#737373;font-size:clamp(12px,3.3cqw,15px)}
+.cm-row p{margin:1.5cqw 0 2cqw !important;padding:0 !important;font-size:clamp(15px,4.8cqw,22px);line-height:1.3}
+.cm-row small,.cm-more{color:#737373;font-size:clamp(11px,3.2cqw,14px);font-weight:600}
+.cm-more{display:block;margin:3.5cqw 0 0 calc(clamp(30px,9cqw,42px) + 3cqw)}
+.art.two{padding:0;grid-template-rows:1fr 1fr}
+.art.two > div{display:grid;place-items:center;text-align:center;padding:4cqw 7cqw;position:relative}
+.art.two small{position:absolute;top:3.5cqw;left:4.5cqw;font:700 clamp(11px,3.2cqw,14px) var(--ui);text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+.art.two span{font:800 clamp(19px,6.4cqw,30px)/1.12 var(--ui);letter-spacing:-.01em}
+.art.two .p1{background:#F3EFE6;color:#111}
+.art.two .p2{background:#141414;color:#fff}
+.art.dump{padding:0;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;background:#fff}
+.art.dump > div{position:relative}
+.art.dump small{position:absolute;left:3cqw;bottom:3cqw;color:#fff;font:600 clamp(11px,3.2cqw,14px) var(--ui);text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.dump-n{position:absolute;top:3cqw;right:3cqw;background:rgba(0,0,0,.55);color:#fff;font:600 12px var(--ui);padding:3px 8px;border-radius:12px}
+.art.quote{background:linear-gradient(170deg,#EFE7DA,#D9C8B4);color:#3B2F25;place-content:center;justify-items:center;text-align:center;padding:10cqw}
+.qm{font:400 clamp(60px,20cqw,110px)/.6 var(--serif);opacity:.35;height:.5em}
+.qt{font:italic 400 clamp(22px,7.2cqw,34px)/1.2 var(--serif)}
+.art.quote small{margin-top:5cqw;font:600 clamp(11px,3.2cqw,14px) var(--ui);letter-spacing:.08em;opacity:.7}
+.art.ad{padding:0;grid-template-rows:1fr auto;background:linear-gradient(180deg,#FCEFEA,#F4D8CF)}
+.ad-stage{display:grid;justify-items:center;align-content:center;gap:2.4cqw;text-align:center;padding:5cqw}
+.bottle{position:relative;width:22cqw;height:34cqw;border-radius:5cqw 5cqw 3cqw 3cqw;background:linear-gradient(90deg,#E9A895,#F7CFC2 45%,#E29B86);display:grid;place-items:center;box-shadow:0 8px 20px rgba(120,50,40,.25)}
+.bottle i{position:absolute;top:-8cqw;width:9cqw;height:9cqw;border-radius:2cqw 2cqw 0 0;background:#2B2B2B}
+.bottle b{font:700 clamp(9px,2.6cqw,12px) var(--ui);color:#5A2E24;letter-spacing:.06em;text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg)}
+.ad-t{font:700 clamp(17px,5.4cqw,26px)/1.15 var(--ui);color:#3A1E18;max-width:80%}
+.ad-p{font:600 clamp(13px,3.8cqw,17px) var(--ui);color:#7A4A3E}
+.cta{display:flex;justify-content:space-between;align-items:center;background:#fff;color:#0095F6;font:600 14px var(--ui);padding:12px 14px;border-top:1px solid #eee}
+.cta span{font-size:20px;line-height:1}
+.art.ba{padding:0;grid-template-columns:1fr 1fr}
+.art.ba > div{display:grid;justify-items:center;align-content:end;gap:3cqw;padding:5cqw 3cqw 7cqw;position:relative}
+.art.ba .b{background:#CFCFCF;color:#333}
+.art.ba .a{background:linear-gradient(170deg,#FFD2A6,#F08A5D);color:#fff}
+.art.ba small{position:absolute;top:4cqw;left:4cqw;font:800 clamp(11px,3.2cqw,14px) var(--ui);letter-spacing:.1em}
+.art.ba em{font:700 clamp(14px,4.2cqw,19px) var(--ui);font-style:normal}
+.fig-s{width:20cqw;height:44cqw;max-width:100%;border-radius:10cqw 10cqw 4cqw 4cqw;background:currentColor;opacity:.35;position:relative}
+.fig-s::before{content:"";position:absolute;left:50%;top:-12cqw;width:11cqw;height:11cqw;border-radius:50%;background:currentColor;transform:translateX(-50%)}
+.art.ba .a .fig-s{opacity:.55;transform:scaleX(.88)}
+
+/* ---------- info panel ---------- */
+.side{width:390px;flex:0 0 390px;position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:none;background:var(--bg);color:var(--fg);border-left:1px solid var(--line);
+  padding:24px 22px 24px;display:grid;gap:14px;align-content:start}
+.side::-webkit-scrollbar{display:none}
+@media (max-width:1263px){.side{width:350px;flex-basis:350px;padding-inline:18px}}
+@media (max-width:999px){.side{display:none}}
+.panel-h{display:grid;gap:4px;padding:0 4px 4px}
+.panel-h .eb{font-size:12px;font-weight:600;color:var(--soft);text-transform:uppercase;letter-spacing:.06em}
+.panel-h h1{margin:0;font-size:22px;line-height:26px;font-weight:800;letter-spacing:-.02em}
+.panel-h p{margin:0;color:var(--soft);line-height:19px}
+.card{background:var(--card);border-radius:14px;padding:16px}
+.row{display:flex;align-items:center;gap:12px;min-width:0}
+.row .txt{min-width:0;flex:1;line-height:18px}
+.row .txt b{font-weight:600;display:block}
+.row .txt span{color:var(--soft);display:block}
+.bigme{width:40px;height:40px;font-size:11px}
+.prog{height:4px;border-radius:4px;background:var(--elev);overflow:hidden;margin-top:12px}
+.prog i{display:block;height:100%;background:var(--link);border-radius:4px;transition:width .35s ease}
+.sh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.sh h2{margin:0;font-size:14px;font-weight:600;color:var(--soft)}
+.sh span{font-size:12px;font-weight:600}
+.crew{display:grid;gap:12px}
+.av{width:44px;height:44px;border-radius:50%;background:var(--elev);display:grid;place-items:end center;overflow:hidden;flex:0 0 auto}
+.av svg{width:88%;height:88%;overflow:visible}
+.lvl{display:grid;gap:4px;justify-items:end;width:56px;flex:0 0 auto}
+.lvl b{font-weight:600;font-variant-numeric:tabular-nums}
+.bar{width:100%;height:3px;border-radius:3px;background:var(--elev);overflow:hidden;display:block}
+.bar i{display:block;height:100%;border-radius:3px;transition:width .4s ease}
+.shake{animation:shake .45s ease-in-out infinite}
+@keyframes shake{0%,100%{translate:0 0}25%{translate:-1.5px 0}75%{translate:1.5px 0}}
+.trick b{font-weight:600;display:block;margin-bottom:2px}
+.trick p{margin:0;color:var(--soft);line-height:19px}
+.src{display:block;margin-top:8px;font-size:12px;color:var(--soft)}
+.src a,.srcs a{color:var(--link);text-decoration:none}
+.src a:hover,.srcs a:hover{text-decoration:underline}
+.srcs{margin:0;padding-left:1.3em;display:grid;gap:8px;font-size:12px;line-height:16px;color:var(--soft)}
+.take{font-weight:600;line-height:20px;text-align:center}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.stat span{display:block;color:var(--soft);font-size:12px;line-height:16px}
+.stat b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.interests{display:grid;gap:8px;margin-top:14px}
+.int{display:grid;grid-template-columns:84px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:12px}
+.int .bar{height:4px}
+.int em{font-style:normal;text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
+.foot{color:var(--soft);font-size:12px;line-height:16px;padding:0 4px}
+
+/* toast for narrow screens */
+.toast{display:none}
+@media (max-width:999px){
+  .toast{display:block;position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 64px);z-index:6;background:var(--toast);color:var(--toast-fg);border-radius:10px;padding:12px 14px;max-width:470px;margin:0 auto;opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;pointer-events:none}
+  .toast.show{opacity:1;transform:none}
+  .toast b{display:block;font-weight:600}
+}
+
+/* ---------- modals ---------- */
+.veil{position:fixed;inset:0;background:var(--overlay);display:grid;place-items:center;padding:24px 16px;z-index:10;overflow:auto}
+.modal{background:var(--card);color:var(--fg);border-radius:14px;max-width:520px;width:100%;overflow:hidden}
+.m-body{padding:28px 24px 22px;display:grid;gap:18px}
+.m-head{text-align:center;display:grid;gap:6px;justify-items:center}
+.m-head .eb{font-size:12px;font-weight:600;color:var(--soft);text-transform:uppercase;letter-spacing:.06em}
+.m-head h2{margin:0;font-size:22px;line-height:28px;font-weight:800;letter-spacing:-.01em}
+.m-head p{margin:0;color:var(--soft);line-height:20px;max-width:44ch}
+.m-btn{all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:14px;border-top:1px solid var(--line);cursor:pointer}
+.m-btn.primary{color:var(--link);font-weight:700}
+.m-btn.danger{color:var(--heart)}
+.m-btn:hover{background:var(--elev)}
+.m-btn:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+.field{display:grid;gap:6px}
+.field label{font-weight:600;font-size:13px}
+.field input{box-sizing:border-box;width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:16px}
+.field input:focus{outline:2px solid var(--link);outline-offset:0;border-color:transparent}
+.hint{color:var(--soft);font-size:12px;text-align:center}
+
+/* result */
+.hero{display:grid;justify-items:center;gap:8px;text-align:center}
+.hero .av{width:108px;height:108px}
+.hero .chem{font-size:34px;line-height:36px;font-weight:800;letter-spacing:-.02em}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;padding:4px 9px;border-radius:20px;color:#fff;vertical-align:middle}
+.hero .tag{font-weight:600;font-size:16px}
+.hero p{margin:0;color:var(--soft);line-height:20px;max-width:42ch}
+.finals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;text-align:center}
+@media (max-width:560px){.finals{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.final{display:grid;justify-items:center;gap:4px}
+.final .av{width:44px;height:44px}
+.final b{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.final span{font-size:11px;color:var(--soft);overflow-wrap:anywhere}
+.lab{font-weight:600;color:var(--soft);display:block;margin-bottom:8px}
+.bubble{display:flex;gap:2px;height:8px}
+.bubble i{display:block;height:100%;border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--soft);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px}
+.tricks{margin:0;padding-left:1.2em;display:grid;gap:6px;line-height:19px}
+.tricks b{font-weight:600}
+/* group */
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+.tal{background:var(--bg);border-radius:10px;padding:10px;display:grid;justify-items:center;gap:4px;text-align:center}
+.tal .av{width:40px;height:40px}
+.tal b{font-size:20px;font-variant-numeric:tabular-nums}
+.tal span{font-size:12px;color:var(--soft);line-height:15px}
+.plist{display:grid;gap:10px}
+.plist .row .av{width:36px;height:36px}
+.plist .when{color:var(--soft);font-size:12px;font-variant-numeric:tabular-nums}
+.discuss{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-weight:600;line-height:20px}
+@media (prefers-reduced-motion:reduce){.shake,.pop .bigheart,.pop .like,.spin{animation:none}.bar i,.prog i,.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="mtop">
+  <span class="wm">foryou</span>
+  <div class="r">
+    <span class="count" id="mCount">0/10</span>
+    <button class="linkbtn" type="button" data-logoff>Log off</button>
+    <span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M12 20.5s-8-4.9-8-11A4.6 4.6 0 0 1 12 6.6 4.6 4.6 0 0 1 20 9.5c0 6.1-8 11-8 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><i class="dot" data-dot hidden></i></span>
+  </div>
+</header>
+<div class="crewbar" id="crewbar" aria-label="Brain levels"></div>
+
+<main>
+  <div class="feedwrap">
+    <div class="feedcol">
+      <div class="apphead">
+        <span class="wm">foryou</span>
+        <div class="r">
+          <span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M12 20.5s-8-4.9-8-11A4.6 4.6 0 0 1 12 6.6 4.6 4.6 0 0 1 20 9.5c0 6.1-8 11-8 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><i class="dot" data-dot hidden></i></span>
+          <span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M21 3 3 10.5l7 2.5 2.5 7L21 3zM10 13l5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
+        </div>
+      </div>
+      <div class="stories" id="stories"></div>
+      <div id="feed"></div>
+      <div class="loading" id="sentinel"><div class="spin" aria-label="Loading more posts"></div></div>
+    </div>
+  </div>
+
+  <aside class="side" aria-label="Your brain and activity">
+    <div class="panel-h">
+      <span class="eb">ATLS 2000 · Creative Deliverable</span>
+      <h1>Brain on the Feed</h1>
+      <p>93–97% of teens ages 13 to 17 use social media, and an algorithm decides what they see. Like the posts you'd actually stop on. Every second here counts, even if you just scroll. After 10 likes or 3 minutes, you get your brain result.</p>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <span class="me bigme" id="pInit">YOU</span>
+        <div class="txt"><b id="pName">you</b><span id="sClock">10:30 PM · just opened the app</span></div>
+        <button class="linkbtn" type="button" data-logoff>Log off</button>
+      </div>
+      <div class="prog" aria-hidden="true"><i id="prog" style="width:0%"></i></div>
+    </div>
+
+    <section class="card">
+      <div class="sh"><h2>Inside your head</h2><span>Level</span></div>
+      <div class="crew" id="crew"></div>
+    </section>
+
+    <section class="card" aria-live="polite">
+      <div class="sh"><h2>What the feed just did</h2><span id="trickNo">Trick 1</span></div>
+      <div class="trick"><b id="whyT"></b><p id="whyP"></p><span class="src" id="whySrc"></span></div>
+    </section>
+
+    <section class="card">
+      <div class="sh"><h2>Your activity</h2><span id="variety">Variety 100%</span></div>
+      <div class="stats">
+        <div class="stat"><span>Screen time</span><b id="aTime">0:00</b></div>
+        <div class="stat"><span>Time now</span><b id="aNow">10:30 PM</b></div>
+        <div class="stat"><span>Posts seen</span><b id="aSeen">0</b></div>
+        <div class="stat"><span>Likes</span><b id="aLiked">0 / 10</b></div>
+      </div>
+      <div class="interests" id="interests"></div>
+    </section>
+
+    <section class="card">
+      <div class="sh"><h2>Sources</h2></div>
+      <ol class="srcs" id="srcList"></ol>
+    </section>
+
+    <div class="foot"><button class="linkbtn" type="button" id="openGroup">Group results</button> · <span id="groupCount">0 players so far</span></div>
+  </aside>
+</main>
+
+<nav class="mbot" aria-hidden="true">
+  <svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" fill="currentColor"/></svg>
+  <svg class="i" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m15.5 15.5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  <svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  <svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 8.5h18M9 3l3 5.5M15 3l3 5.5" stroke="currentColor" stroke-width="2"/><path d="m10 12 5 3-5 3z" fill="currentColor"/></svg>
+  <span class="me">YOU</span>
+</nav>
+
+<div class="toast" id="toast" aria-live="polite"><b id="toastT"></b><span id="toastP"></span></div>
+
+<!-- who's playing -->
+<div class="veil" id="startV">
+  <form class="modal" id="startF" role="dialog" aria-modal="true" aria-labelledby="startT">
+    <div class="m-body">
+      <div class="m-head">
+        <span class="eb" id="startEb">Player 1</span>
+        <h2 id="startT">Who's scrolling?</h2>
+        <p>It's 10:30 PM and you just need to check one thing. Like 10 posts you'd actually stop on and see what the algorithm does to your brain. The clock is running, so even scrolling past posts counts. You have 3 minutes, or you can log off anytime.</p>
+      </div>
+      <div class="field"><label for="pname">Your name</label><input id="pname" name="pname" maxlength="24" autocomplete="off" placeholder="e.g. Zoe"></div>
+      <span class="hint" id="startHint">Results from everyone who plays are saved on this computer until you clear them.</span>
+    </div>
+    <button class="m-btn primary" type="submit">Start scrolling</button>
+    <button class="m-btn" type="button" id="startGroup" hidden>See group results</button>
+  </form>
+</div>
+
+<!-- one player's result -->
+<div class="veil" id="resV" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resChem">
+    <div class="m-body">
+      <div class="hero">
+        <span class="m-head"><span class="eb" id="resWho"></span></span>
+        <span class="av" id="resAv"></span>
+        <span class="chem" id="resChem"></span>
+        <span class="tag" id="resTag"></span>
+        <p id="resText"></p>
+      </div>
+      <div class="finals" id="finals"></div>
+      <div><span class="lab">Your filter bubble</span><div class="bubble" id="bubble"></div><div class="legend" id="legend"></div></div>
+      <div class="discuss take" id="takeaway"></div>
+    </div>
+    <button class="m-btn primary" type="button" id="nextP">Next player</button>
+    <button class="m-btn" type="button" id="resGroup">See group results</button>
+  </div>
+</div>
+
+<!-- whole group -->
+<div class="veil" id="grpV" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="grpT">
+    <div class="m-body">
+      <div class="m-head"><span class="eb" id="grpN"></span><h2 id="grpT">Group results</h2><p>What did the feed do to each person's brain?</p></div>
+      <div class="tally" id="tally"></div>
+      <div class="plist" id="plist"></div>
+      <div class="discuss">Our conclusion: limiting use is the best way to lower the effects of algorithms on the brain. After playing, how would you limit your own scrolling?</div>
+    </div>
+    <button class="m-btn primary" type="button" id="grpNext">Next player</button>
+    <button class="m-btn danger" type="button" id="grpClear">Clear group results</button>
+    <button class="m-btn" type="button" id="grpClose">Close</button>
+  </div>
+</div>
+
+<script>
+/* ===== EDIT HERE: everything below comes from our Research Documentation ===== */
+const SOURCES = {
+  1:{title:"Social Media Algorithms and Teen Addiction: Neurophysiological Impact and Ethical Considerations", url:"https://pmc.ncbi.nlm.nih.gov/articles/PMC11804976/"},
+  2:{title:"Are Algorithms Harming Our Relationships?", url:"https://www.psychologytoday.com/us/blog/beyond-mental-health/202404/are-algorithms-harming-our-relationships/amp"},
+  3:{title:"Social Media Algorithms and Mental Health", url:"https://acp-mn.com/about-acp/blog/social-media-algorithms-and-mental-health/"}
+};
+const LIKES_TO_FINISH = 10;
+const MAX_SECONDS = 180;          // real seconds of scrolling before time runs out (1 second = 1 minute on the clock)
+const PASSIVE = {                 // what happens every real second on the app, even without liking anything
+  dependency: 0.15,               //   repeated checking builds dependency (Source 3)
+  procrastination: 0.14,          //   ...and procrastination (Source 3)
+  mood: -0.06,                    //   ...and low mood (Source 3)
+  dopamine: -0.12,                //   slow comedown, so you want the next hit
+  lookShare: 0.07,                // each second a post is on screen, you get this share of its effect...
+  lookMax: 4                      // ...for up to this many seconds per post
+};
+/* The five meters are the effects Source 3 names: "dopamine surges ... dependency, anxiety, procrastination, and low mood." */
+const CREW = [
+  {id:"dopa", chem:"Dopamine", color:"var(--pink)",
+   says:{wired:"one more. just one more.", good:"ooh, that was fun!", low:"bored. need a new hit."}},
+  {id:"dep", chem:"Dependency", color:"var(--purple)",
+   says:{good:"I could put it down anytime.", mid:"just checking one more time...", bad:"can't. stop. checking."}},
+  {id:"anx", chem:"Anxiety", color:"var(--orange)",
+   says:{good:"all calm over here.", mid:"wait, why is everyone so mad?", bad:"everything feels urgent"}},
+  {id:"proc", chem:"Procrastination", color:"var(--blue)",
+   says:{good:"essay's due tomorrow. I'm on it.", mid:"I'll start in five minutes.", bad:"what essay?"}},
+  {id:"mood", chem:"Mood", color:"var(--teal)",
+   says:{good:"feeling pretty good.", mid:"meh.", bad:"why do I feel worse?"}}
+];
+const START_LEVELS = {dopa:50, dep:10, anx:25, proc:15, mood:65};
+/* the six possible results */
+const RESULTS = {
+  dopa:{crew:"dopa", level:"SURGE", face:"wired", tag:"Chasing the next hit",
+    text:"Every tap was a quick reward, and your brain wanted the next one more than it enjoyed the last. Algorithmic rewards trigger dopamine surges that keep you checking."},
+  dep:{crew:"dep", level:"HIGH", face:"bad", tag:"Hooked on the loop",
+    text:"The feed learned what keeps you here and kept serving it. That feedback loop is how AI-driven content promotes social media addiction."},
+  anx:{crew:"anx", level:"HIGH", face:"bad", tag:"Wound up",
+    text:"The algorithm boosted emotionally charged posts because they kept you engaged, and you left more anxious than when you opened the app."},
+  proc:{crew:"proc", level:"HIGH", face:"bad", tag:"\"Five more minutes\"",
+    text:"Nothing dramatic happened, but the scroll never ended. Infinite scroll and notifications kept you checking instead of doing what you meant to do."},
+  mood:{crew:"mood", level:"LOW", face:"bad", tag:"Scrolled into a slump",
+    text:"You opened the app to feel better and closed it feeling worse. Repeated checking can foster low mood."},
+  limited:{crew:"mood", level:"OK", face:"good", tag:"You put it down",
+    text:"You limited your time on the feed, and your brain is better for it. In one experiment, five weeks off Facebook or Instagram improved well-being and reduced anxiety and depression."}
+};
+const TAKEAWAY = "Limiting use is the best way to lower the negative effects of algorithms on the brain.";
+
+/* fx = what liking one post does to each meter. tip = [title, explanation, source number] */
+const CATS = {
+  outrage:{label:"Outrage", color:"var(--orange)", sub:"Suggested for you", fx:{dopa:8,anx:12,mood:-6,dep:3,proc:2},
+    tip:["Emotionally charged posts win","Algorithms boost emotionally charged posts. Anger gets more reactions, so the feed shows you more of it.",3]},
+  cute:{label:"Funny/cute", color:"var(--pink)", sub:"Suggested for you", fx:{dopa:9,mood:3,dep:4,proc:3},
+    tip:["Algorithmic rewards","Every funny post is a little reward. Algorithmic rewards drive repeated checking and trigger dopamine surges, which can build dependency.",3]},
+  compare:{label:"Ads & influencers", color:"var(--gold)", sub:"Paid partnership", fx:{dopa:7,anx:5,mood:-8,dep:3,proc:2},
+    tip:["You're the product","Sponsored posts are how the feed makes money. In 2022 alone, US kids and teens generated $11 billion in ad revenue for major social media platforms.",1]},
+  friends:{label:"Friends", color:"var(--teal)", sub:"", fx:{dopa:4,mood:8,anx:-4,dep:1,proc:1},
+    tip:["Algorithms and relationships","Researchers are asking whether algorithms are harming our relationships. In one six-year study, 28% of people surveyed were estranged from a sibling at some point.",2]},
+  brainrot:{label:"Brain rot", color:"var(--lime)", sub:"Suggested for you", fx:{dopa:12,dep:5,proc:5,mood:-2},
+    tip:["Dopamine surges","Fast, random clips are the quickest reward on the feed. Those rewards trigger dopamine surges, and repeated checking can foster dependency.",3]},
+  learn:{label:"Learning", color:"var(--blue)", sub:"Suggested for you", fx:{dopa:3,mood:2,dep:1,proc:2},
+    tip:["Still scrolling","Even useful posts keep you on the app. Infinite scroll and algorithmic rewards drive repeated checking, which can lead to procrastination.",3]}
+};
+const EXTRA_TRICKS = {
+  scroll:["Infinite scroll","The feed never ends, so there's no natural place to stop. Infinite scroll is one of the features that drives repeated checking.",3],
+  caught:["The end that isn't","The app said you're all caught up, then kept going with suggested posts. The stopping point was there, and the feed made it easy to scroll right past it.",3],
+  dwell:["Feedback loop","You didn't like that post, but the feed noticed you paused on it. AI-driven content optimization creates a feedback loop that promotes social media addiction among teens.",1],
+  notif:["Notifications","A red dot keeps showing up. Notifications pull you back to check again, even when nothing important happened.",3],
+  echo:["Echo chamber","The feed keeps showing you more of what you already like. Algorithms lead us to media that reinforces what we already believe and steer us into siloed communities, which leads to groupthink.",2]
+};
+
+/* [handle, caption, likes, comments, picture]
+   picture is either a short line of text (drawn in that category's style) or a screenshot:
+   {k:"tweet", name, h, t, meta}      {k:"poll", q, opts:[[label,%]], foot}     {k:"chat", who, msgs:[["l"|"r", text]]}
+   {k:"notes", title, lines:[]}       {k:"list", title, items:[]}              {k:"receipt", place, lines:[[item,price]], total}
+   {k:"news", outlet, t, meta}        {k:"comment", h, t, likes, replies}      {k:"two", top:[label,text], bottom:[label,text]}
+   {k:"dump", tiles:[4 captions]}     {k:"quote", t, by}                       {k:"ad", product, t, price, cta}
+   {k:"ba", before, after}   Add sub:"..." to any picture object to change the grey line under the account name. */
+const POSTS = {
+  outrage:[
+    ["cityrentwatch","The comments are already 4,000 deep.","48.2K","4.1K",
+      {k:"news",outlet:"The Daily Scroll",t:"Landlord raises rent 30%, tells tenants to \"just get more roommates\"",meta:"Local · 3 min read"}],
+    ["travelhottakes","Be honest.","31.7K","9.8K",
+      {k:"tweet",name:"Travel Takes",h:"@travelhottakes",t:"Unpopular opinion: if you take your shoes off on a plane, you should be banned from flying. For life.",meta:"6:14 PM · 4.1M views"}],
+    ["debatenight","This is getting heated in the comments.","56K","31K",
+      {k:"poll",q:"Is it rude to recline your seat on a plane?",opts:[["Yes, always",54],["No, that's what it's for",46]],foot:"1,284,019 votes"}],
+    ["teaspill","Third apology this year. Does this one count?","88K","14K",
+      {k:"notes",title:"To my community",lines:["I want to address the situation.","I never meant for my words","to be taken the way they were.","I'm taking time to reflect.","Please respect my privacy."]}],
+    ["comment.wars","The replies are brutal.","27K","12K",
+      {k:"comment",h:"realgary1961",t:"Nobody under 25 knows how to write a check or read a paper map. We are raising a generation that can't survive without WiFi.",likes:"9,812",replies:"12,406"}],
+    ["feefatigue","A kitchen appreciation fee. For a latte I picked up myself.","73K","25K",
+      {k:"receipt",place:"CORNER CAFE",lines:[["Iced latte","$5.75"],["Service fee","$1.50"],["Kitchen appreciation","$1.00"],["Tip (22%)","$1.82"]],total:"$10.07"}],
+    ["campusdrama","Tag someone who got a ticket this week.","12K","3.1K","Campus parking permit now costs more than a used bike"],
+    ["groupprojectvictims","Worst group project partner story. Go.","61K","18K","Group member submits the project at 11:58 PM without telling anyone"]],
+  cute:[
+    ["goodpups","He has decided snow is his best friend now.","120K","2.1K","golden retriever sees snow for the first time"],
+    ["textsfrommom","The \"nothing is wrong\" was doing a lot of work.","210K","3K",
+      {k:"chat",who:"Mom",msgs:[["l","Call me when you can. Nothing is wrong."],["r","ok what happened"],["l","Nothing! Just wanted to hear your voice"],["l","Also the dog ate your retainer"]]}],
+    ["relatablememes","How did I get here","95K","1.8K",
+      {k:"two",top:["me at 11 pm","one more video, then bed"],bottom:["me at 2 am","watching a man restore a rusty knife"]}],
+    ["tiredstudent","I would like to speak to its manager.","64K","4.4K",
+      {k:"tweet",name:"tired student",h:"@needsnap",t:"my screen time report says I averaged 7 hours a day last week. I'd like to see the receipts.",meta:"1:12 AM · 1.1M views"}],
+    ["chonkycats","The top comment is correct.","73K","2.6K",
+      {k:"comment",h:"catlady_42",t:"he's not fat, he's built for winter",likes:"48.1K",replies:"312"}],
+    ["alex.m","september dump (mostly coffee)","58K","1.2K",
+      {k:"dump",tiles:["iced coffee #3","library, 1 am","someone's dog","blurry sunset"]}],
+    ["printercat","He's been guarding it for three hours.","47K","2.9K","cat discovers the printer"],
+    ["weekendplans","Update: I did none of them.","88K","3.7K",
+      {k:"list",title:"Things I said I'd do this weekend",items:["Laundry","Start the essay","Go to the gym","Sleep before 2 AM"]}]],
+  compare:[
+    ["morningmogul","Rise and grind. My 5 AM planner is linked in bio.","41K","3.2K",
+      {k:"quote",t:"Your twenties are for building an empire, not for sleeping in.",by:"@morningmogul"}],
+    ["ceo.at.21","What I eat in a day as a 21-year-old CEO","38K","7.9K",
+      {k:"list",title:"What I eat in a day",items:["Warm lemon water","An $18 acai bowl","Matcha from the place with no sign","Salmon, but make it aesthetic"]}],
+    ["fitwithtay","Results not typical. (Results are very typical if you buy the program.)","52K","5K",
+      {k:"ba",before:"Week 1",after:"Week 4"}],
+    ["wanderfeed","summer recap. can't believe I get to call this work","19K","880",
+      {k:"dump",tiles:["amalfi coast","linen fit","espresso","a friend's yacht"]}],
+    ["glowlab","I've been using it for two whole days and my skin has never been better.","29K","4.1K",
+      {k:"ad",sub:"Sponsored",product:"Glow Serum",t:"The serum everyone is talking about",price:"$64",cta:"Shop now"}],
+    ["hustle.hayden","Thoughts?","44K","11K",
+      {k:"tweet",name:"Hayden | Founder",h:"@hustlehayden",t:"Turned down a job offer at 22 because I'm building something bigger. If you're still working 9 to 5, that's okay. Some people are meant to follow.",meta:"7:00 AM · 700K views"}],
+    ["aptdreams","It's small but it's home. (It has a rooftop pool.)","33K","6K","apartment tour: $4,800 a month"],
+    ["thatgirl.daily","5:00 AM. Cold plunge. Journaling. Pilates. Then I start my day.","26K","1.9K","my morning routine"]],
+  friends:[
+    ["maya.r","saturday was so worth the blisters. swipe for my fall","42","8",
+      {k:"dump",tiles:["the trail","trail snacks","the view","me, falling"]}],
+    ["cousin.dani","she will not rest until you send a photo of a vegetable","3","1",
+      {k:"chat",who:"Dani",msgs:[["l","are you coming home for thanksgiving?"],["r","yes!!"],["l","grandma wants to know if you're eating"],["r","tell her yes"],["l","she doesn't believe you"]]}],
+    ["jordan_k","found this from freshman year. why did we all dress like that","27","5","freshman year"],
+    ["pod.4","voting closes tuesday","6","12",
+      {k:"poll",q:"what should we bring on tuesday?",opts:[["chips",40],["cookies",45],["fruit (someone should)",15]],foot:"5 votes · your pod"}],
+    ["sam.lee","I GOT INTO THE PROGRAM!!! thank you for listening to me stress about it for 3 months","61","14","I GOT IN"],
+    ["nana.and.me","my grandma learned the front camera. it's all nostrils. we love her.","88","21","grandma's first selfie"],
+    ["jess.lives","posting this for public accountability","19","9",
+      {k:"list",title:"Roommate chore chart",items:["Dishes: Jess","Trash: me","The weird smell: nobody","Vacuum: in theory"]}],
+    ["riley.b","21 years of you being the loudest person in every room. love you","33","6","happy birthday to my favorite person"]],
+  learn:[
+    ["tinyscience","Octopus arms can taste what they touch. Swipe through.","8.2K","310","How octopuses taste with their arms"],
+    ["tinyfacts","#3 is my new favorite word","12K","540",
+      {k:"list",title:"Weird but true",items:["Wombat poop is cube-shaped","Honey from ancient tombs was still edible","A group of flamingos is a \"flamboyance\"","Bananas are berries. Strawberries aren't."]}],
+    ["spacecadet","Answer: longer than its whole year. Venus is weird.","9.4K","1.2K",
+      {k:"poll",q:"How long is one day on Venus?",opts:[["24 hours",12],["About a week",21],["Longer than its year",67]],foot:"38,902 votes · quiz"}],
+    ["naturenotes","Scout bees dance to vote, and the whole swarm picks a winner.","5.4K","190",
+      {k:"news",outlet:"Nature Notes",t:"How honeybee swarms vote on a new home",meta:"Science · 4 min read"}],
+    ["wellbeingweekly","Could you go five weeks? Be honest.","6.9K","2.4K",
+      {k:"news",outlet:"Wellbeing Weekly",t:"Five weeks off Facebook or Instagram improved well-being and reduced anxiety, experiment finds",meta:"Health · 3 min read"}],
+    ["dormchef","A pot, a lid, and 18 minutes of patience.","4.4K","150","Rice without a rice cooker"],
+    ["fixitfast","Save yourself a trip to the bike shop.","3.1K","85","Fix a slipped bike chain in 90 seconds"],
+    ["slowreads","A 10-minute read on how habits form","2.7K","120","How habits form"]],
+  brainrot:[
+    ["aurafarmer","he's cooked","140K","12K",
+      {k:"tweet",name:"jake",h:"@jakeee",t:"tripped going up the stairs in front of my entire lecture. -10,000 aura. transferring schools.",meta:"11:02 AM · 6.7M views"}],
+    ["sixseven","6 7","167K","67K","6 7"],
+    ["commentsection","not beating the allegations","98K","4.2K",
+      {k:"comment",h:"user8837261",t:"bro is NOT beating the allegations",likes:"212K",replies:"1,840"}],
+    ["lilbro.diaries","he is 9. he runs this house.","61K","3.3K",
+      {k:"chat",who:"lil bro",msgs:[["r","who ate my fries"],["l","fanum tax"],["r","that's not a real thing"],["l","it is now"]]}],
+    ["olderbrother","it's contagious","77K","2.2K",
+      {k:"two",top:["my 11-year-old cousin","says \"skibidi\" 40 times a day"],bottom:["me, 20","now also says it"]}],
+    ["rizzcouncil","context: he texted \"wyd\" at 3 AM","83K","29K",
+      {k:"poll",q:"is he cooked?",opts:[["cooked",71],["he's so back",29]],foot:"2,067,067 votes"}],
+    ["bigsisenergy","I'm too old for this","54K","8.8K",
+      {k:"list",title:"Words my little sister taught me this week",items:["Aura","Chopped","Crash out","Six seven"]}],
+    ["tuffcreatures","no because why is he standing like that","112K","9K","this cat is so tuff"]]
+};
+const CAUGHT_UP_AFTER = 12;   // posts before the fake "all caught up" message
+/* ===== end of editable content ===== */
+
+const $ = id => document.getElementById(id);
+const $$ = s => document.querySelectorAll(s);
+const START = 22*60+30;
+const CREWBY = Object.fromEntries(CREW.map(c=>[c.id,c]));
+let S, GROUP = [];
+try { GROUP = JSON.parse(localStorage.getItem("botf-group-v2") || "[]").filter(g=>RESULTS[g.key]); } catch(e) { GROUP = []; }
+function saveGroup(){ try { localStorage.setItem("botf-group-v2", JSON.stringify(GROUP)); } catch(e) {} }
+
+const ICON = {
+  heart:`<svg class="i" viewBox="0 0 24 24"><path d="M12 20.5s-8-4.9-8-11A4.6 4.6 0 0 1 12 6.6 4.6 4.6 0 0 1 20 9.5c0 6.1-8 11-8 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
+  comment:`<svg class="i" viewBox="0 0 24 24"><path d="M20.5 11.5a8.5 8.5 0 1 1-3.2-6.6 8.5 8.5 0 0 1 3.2 6.6zM20.5 11.5 21 21l-4.6-2.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
+  share:`<svg class="i" viewBox="0 0 24 24"><path d="M21 3 3 10.5l7 2.5 2.5 7L21 3zM10 13l5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
+  save:`<svg class="i" viewBox="0 0 24 24"><path d="M19 21l-7-5.5L5 21V3h14z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
+  more:`<svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>`,
+  big:`<svg viewBox="0 0 24 24"><path d="M12 20.5s-8-4.9-8-11A4.6 4.6 0 0 1 12 6.6 4.6 4.6 0 0 1 20 9.5c0 6.1-8 11-8 11z" fill="#fff"/></svg>`
+};
+
+function newGame(name){
+  S = {name:name||`Player ${GROUP.length+1}`, stats:{...START_LEVELS}, weights:Object.fromEntries(Object.keys(CATS).map(k=>[k,1])),
+       history:[], used:Object.fromEntries(Object.keys(CATS).map(k=>[k,0])), minutes:START, seen:0, tricks:1,
+       seenTricks:new Set(["scroll"]), caught:false, pid:0, over:false, secs:0, dwell:{}};
+  setDot(false);
+  vis.disconnect(); onScreen.clear();
+  $("feed").innerHTML = "";
+  $("pName").textContent = S.name; $("pInit").textContent = initials(S.name) || "YOU";
+  setTrick(EXTRA_TRICKS.scroll, true);
+  loadBatch(); loadBatch();
+  renderAll(); window.scrollTo(0,0);
+}
+const clamp = v => Math.max(0, Math.min(100, v));
+function fmt(m){ m %= 24*60; let h = Math.floor(m/60), mm = m%60, ap = h>=12?"PM":"AM"; h = h%12||12; return `${h}:${String(mm).padStart(2,"0")} ${ap}`; }
+function clock(sec){ return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`; }
+function dur(m){ const h = Math.floor(m/60); return h ? `${h}h ${m%60}m` : `${m}m`; }
+function exact(s, salt){ return /K$/.test(s) ? Math.round(parseFloat(s)*1000 + ((s.length+salt)*137)%97).toLocaleString("en-US") : s; }
+function initials(h){ return h.replace(/[^a-z]/gi,"").slice(0,2).toUpperCase(); }
+function esc(s){ return String(s).replace(/[&<>"]/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
+function setDot(on){ $$("[data-dot]").forEach(d=>d.hidden=!on); }
+
+let toastTimer;
+function srcLink(n){ return `Source ${n}: <a href="${SOURCES[n].url}" target="_blank" rel="noopener">${SOURCES[n].title}</a>`; }
+function setTrick(tr, quiet){
+  const [t, p, src] = tr;
+  $("whyT").textContent = t; $("whyP").textContent = p; $("trickNo").textContent = "Trick " + S.tricks;
+  $("whySrc").innerHTML = src ? srcLink(src) : "";
+  if(!quiet){ $("toastT").textContent = t; $("toastP").textContent = p; const el = $("toast"); el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.classList.remove("show"), 3800); }
+}
+function newTrick(key){ if(S.over || S.seenTricks.has(key)) return; S.seenTricks.add(key); S.tricks++; setTrick(EXTRA_TRICKS[key]); }
+
+function mood(id, v){
+  if(id==="dopa") return v>78?"wired":v<28?"low":"good";
+  if(id==="mood") return v>58?"good":v>32?"mid":"bad";
+  return v<35?"good":v<65?"mid":"bad";      // dependency, anxiety, procrastination: higher is worse
+}
+function figure(id, m, color, still){
+  const K = "#111";
+  const hat = {
+    dopa:`<path d="M50 30 C48 20 54 16 50 8" fill="none" stroke="${K}" stroke-width="3.5" stroke-linecap="round"/><circle cx="50" cy="7" r="6" fill="${color}" stroke="${K}" stroke-width="2.5"/>`,
+    anx:`<path d="M24 44 l5 -13 l7 9 l5 -14 l7 10 l5 -14 l6 11 l6 -13 l5 12 l6 -10 l3 10" fill="none" stroke="${K}" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`,
+    dep:`<path d="M50 31 V12" fill="none" stroke="${K}" stroke-width="3.5" stroke-linecap="round"/><path d="M50 30 q0 -8 -7 -8 q-5 0 -5 5" fill="none" stroke="${K}" stroke-width="3.5" stroke-linecap="round"/><circle cx="50" cy="8" r="4.5" fill="${color}" stroke="${K}" stroke-width="2.2"/>`,
+    mood:`<path d="M50 30 v-10" stroke="${K}" stroke-width="3"/><path d="M50 20 q6 -14 22 -10 q-6 14 -22 10z" fill="${color}" stroke="${K}" stroke-width="2.5"/>`,
+    proc:`<path d="M20 46 C28 18 60 8 82 22 L74 44 Z" fill="${color}" stroke="${K}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="84" cy="22" r="6" fill="#fff" stroke="${K}" stroke-width="2.5"/>`
+  }[id];
+  let eyes, mouth, extra="";
+  const st = `stroke="${K}" stroke-width="3.6" stroke-linecap="round" fill="none"`;
+  if(m==="wired"){ eyes=`<circle cx="39" cy="60" r="7.5" fill="#fff" stroke="${K}" stroke-width="2.5"/><circle cx="61" cy="60" r="7.5" fill="#fff" stroke="${K}" stroke-width="2.5"/><circle cx="40" cy="60" r="3.2" fill="${K}"/><circle cx="62" cy="60" r="3.2" fill="${K}"/>`; mouth=`<path d="M38 76 q12 13 24 0 z" fill="${K}"/>`; }
+  else if(m==="good"){ eyes=`<path d="M33 61 q6 -7 12 0 M55 61 q6 -7 12 0" ${st}/>`; mouth=`<path d="M40 74 q10 10 20 0" ${st}/>`; }
+  else if(m==="mid"){ eyes=`<circle cx="39" cy="60" r="3.6" fill="${K}"/><circle cx="61" cy="60" r="3.6" fill="${K}"/>`; mouth=`<path d="M42 77 h16" ${st}/>`; }
+  else if(id==="anx"){ eyes=`<circle cx="39" cy="60" r="7.5" fill="#fff" stroke="${K}" stroke-width="2.5"/><circle cx="61" cy="60" r="7.5" fill="#fff" stroke="${K}" stroke-width="2.5"/><circle cx="39" cy="61" r="2.2" fill="${K}"/><circle cx="61" cy="61" r="2.2" fill="${K}"/>`; mouth=`<path d="M36 78 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4" ${st} stroke-width="3" stroke-linejoin="round"/>`; }
+  else { eyes=`<circle cx="39" cy="62" r="3.6" fill="${K}"/><circle cx="61" cy="62" r="3.6" fill="${K}"/><path d="M32 51 l12 4 M68 51 l-12 4" ${st} stroke-width="3"/>`; mouth=`<path d="M40 80 q10 -9 20 0" ${st}/>`; if(id==="mood") extra=`<path d="M64 67 q3 6 0 9 q-3 -3 0 -9z" fill="#fff" stroke="${K}" stroke-width="1.8"/>`; }
+  if(id==="proc" && m==="bad"){ eyes=`<path d="M33 61 h12 M55 61 h12" ${st}/>`; mouth=`<path d="M40 78 q5 -4 10 0 q5 4 10 0" ${st} stroke-width="3"/>`; }
+  return `<svg viewBox="0 0 100 100" aria-hidden="true" class="${!still&&(m==="bad"||m==="wired")?"shake":""}">${hat}
+    <path d="M50 30 C74 30 84 46 84 64 C84 84 70 98 50 98 C30 98 16 84 16 64 C16 46 26 30 50 30Z" fill="${color}" stroke="${K}" stroke-width="2.5"/>${eyes}${mouth}${extra}</svg>`;
+}
+
+function renderCrew(){
+  $("crew").innerHTML = CREW.map(c=>{
+    const v = Math.round(S.stats[c.id]), m = mood(c.id,v);
+    return `<div class="row"><span class="av">${figure(c.id,m,c.color)}</span>
+      <div class="txt"><b>${c.chem}</b><span>"${c.says[m]}"</span></div>
+      <div class="lvl"><b>${v}</b><span class="bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${v}" aria-label="${c.chem}"><i style="width:${v}%;background:${c.color}"></i></span></div></div>`;
+  }).join("");
+  $("crewbar").innerHTML = CREW.map(c=>{
+    const v = Math.round(S.stats[c.id]), m = mood(c.id,v);
+    return `<div class="cb"><span class="av">${figure(c.id,m,c.color)}</span><b>${c.chem} <span>${v}</span></b><span class="bar"><i style="width:${v}%;background:${c.color}"></i></span></div>`;
+  }).join("");
+}
+function shares(){ const t = Object.values(S.weights).reduce((a,b)=>a+b,0), o={}; for(const k in S.weights) o[k]=S.weights[k]/t; return o; }
+function variety(){ const p = shares(); let H=0; for(const k in p) if(p[k]>0) H -= p[k]*Math.log(p[k]); return Math.round(100*H/Math.log(Object.keys(CATS).length)); }
+function renderActivity(){
+  const p = shares(), n = S.history.length;
+  $("interests").innerHTML = Object.keys(CATS).sort((a,b)=>p[b]-p[a]).map(k=>
+    `<div class="int"><span>${CATS[k].label}</span><span class="bar"><i style="width:${Math.round(p[k]*100)}%;background:${CATS[k].color}"></i></span><em>${Math.round(p[k]*100)}%</em></div>`).join("");
+  $("variety").textContent = `Variety ${variety()}%`;
+  const on = S.minutes - START;
+  $("aTime").textContent = `${clock(S.secs)} / ${clock(MAX_SECONDS)}`; $("aNow").textContent = fmt(S.minutes);
+  $("aSeen").textContent = S.seen; $("aLiked").textContent = `${n} / ${LIKES_TO_FINISH}`;
+  $("mCount").textContent = `${n}/${LIKES_TO_FINISH} · ${clock(S.secs)}`;
+  $("prog").style.width = (n/LIKES_TO_FINISH*100)+"%";
+  $("sClock").textContent = `${n} of ${LIKES_TO_FINISH} likes · ${fmt(S.minutes)}`;
+  $("groupCount").textContent = `${GROUP.length} player${GROUP.length===1?"":"s"} so far`;
+}
+function renderStories(){
+  const p = shares(), order = Object.keys(CATS).sort((a,b)=>p[b]-p[a]);
+  const picks = [], n = S.history.length;
+  for(let i=0;picks.length<7 && i<30;i++){ const c = order[i % (n>=3 ? 2 : 5)]; const h = POSTS[c][(i+n) % POSTS[c].length][0]; if(!picks.some(x=>x[0]===h)) picks.push([h,c]); }
+  $("stories").innerHTML = `<div class="story"><div class="ring seen"><span style="background:var(--blue)">${esc(initials(S.name)||"YOU")}</span></div><small>Your story</small></div>` +
+    picks.map(([h,c])=>`<div class="story"><div class="ring"><span style="background:${CATS[c].color}">${initials(h)}</span></div><small>${h}</small></div>`).join("");
+}
+function renderAll(){ renderCrew(); renderActivity(); renderStories(); }
+
+const BACKDROP = {outrage:"#111", cute:"var(--pink)", compare:"linear-gradient(160deg,#F6D9C6,#B98C9E)", friends:"#7EC8E3", brainrot:"repeating-linear-gradient(135deg,#7BE041 0 22px,#B36BFF 22px 44px)", learn:"var(--blue)"};
+function shot(c, P){
+  const bg = `style="background:${BACKDROP[c]}"`;
+  if(P.k==="tweet") return `<div class="art shot" ${bg}><div class="sc tw"><div class="tw-h"><span class="tw-av" style="background:${CATS[c].color}">${initials(P.name)}</span><span><b>${P.name}</b><small>${P.h}</small></span></div><p>${P.t}</p><small>${P.meta}</small></div></div>`;
+  if(P.k==="poll"){ const top = Math.max(...P.opts.map(o=>o[1]));
+    return `<div class="art shot" ${bg}><div class="sc poll"><b class="q">${P.q}</b>${P.opts.map(([l,v])=>`<div class="opt${v===top?" win":""}"><i style="width:${v}%"></i><span>${l}</span><em>${v}%</em></div>`).join("")}<small>${P.foot}</small></div></div>`; }
+  if(P.k==="chat") return `<div class="art shot chatbg"><div class="chat"><div class="chat-h"><span class="tw-av" style="background:${CATS[c].color}">${initials(P.who)}</span><b>${P.who}</b></div>${P.msgs.map(([side,t])=>`<span class="bub ${side}">${t}</span>`).join("")}</div></div>`;
+  if(P.k==="notes") return `<div class="art notes"><div class="notes-h">&lsaquo; Notes</div><b>${P.title}</b>${P.lines.map(l=>`<span>${l}</span>`).join("")}</div>`;
+  if(P.k==="list") return `<div class="art shot" ${bg}><div class="sc list"><b class="q">${P.title}</b><ol>${P.items.map(t=>`<li>${t}</li>`).join("")}</ol></div></div>`;
+  if(P.k==="receipt") return `<div class="art shot" style="background:#2B2B2B"><div class="rcpt"><b>${P.place}</b><span class="dash"></span>${P.lines.map(([a,b])=>`<span class="rl"><span>${a}</span><span>${b}</span></span>`).join("")}<span class="dash"></span><span class="rl tot"><span>TOTAL</span><span>${P.total}</span></span><span class="thx">THANK YOU, COME AGAIN</span></div></div>`;
+  if(P.k==="news") return `<div class="art news"><div class="nw-top"><b>${P.outlet}</b><span>&middot;&middot;&middot;</span></div><div class="nw-img" style="background:${BACKDROP[c]}"></div><b class="nw-t">${P.t}</b><small>${P.meta}</small></div>`;
+  if(P.k==="comment") return `<div class="art shot" ${bg}><div class="sc cm"><div class="cm-row"><span class="tw-av" style="background:${CATS[c].color}">${initials(P.h)}</span><div><b>${P.h}</b> <span class="cm-t">2d</span><p>${P.t}</p><small>Reply &nbsp;·&nbsp; ${P.likes} likes</small></div></div><small class="cm-more">&mdash;&mdash; View ${P.replies} replies</small></div></div>`;
+  if(P.k==="two") return `<div class="art two"><div class="p1"><small>${P.top[0]}</small><span>${P.top[1]}</span></div><div class="p2"><small>${P.bottom[0]}</small><span>${P.bottom[1]}</span></div></div>`;
+  if(P.k==="dump"){ const g = ["linear-gradient(150deg,#C79A6B,#6B4A32)","linear-gradient(150deg,#39455C,#1B2130)","linear-gradient(150deg,#E9C46A,#E76F51)","linear-gradient(150deg,#F4A259,#8E5572)","linear-gradient(150deg,#8AB6D6,#2E6B5E)","linear-gradient(150deg,#D8D2C4,#9C8F7A)"];
+    return `<div class="art dump">${P.tiles.map((t,i)=>`<div style="background:${g[(i+t.length)%g.length]}"><small>${t}</small></div>`).join("")}<span class="dump-n">1/${P.tiles.length+6}</span></div>`; }
+  if(P.k==="quote") return `<div class="art quote"><span class="qm">&ldquo;</span><span class="qt">${P.t}</span><small>${P.by}</small></div>`;
+  if(P.k==="ad") return `<div class="art ad"><div class="ad-stage"><span class="bottle"><i></i><b>${P.product}</b></span><span class="ad-t">${P.t}</span><span class="ad-p">${P.price}</span></div><div class="cta">${P.cta}<span>&rsaquo;</span></div></div>`;
+  if(P.k==="ba") return `<div class="art ba"><div class="b"><small>BEFORE</small><span class="fig-s"></span><em>${P.before}</em></div><div class="a"><small>AFTER</small><span class="fig-s"></span><em>${P.after}</em></div></div>`;
+  return "";
+}
+function art(c, pic, n){
+  if(typeof pic === "object") return shot(c, pic);
+  const text = pic;
+  if(c==="brainrot"){ const stk = [["+1000 AURA","#FFE600"],["NO CAP","#fff"],["W","#7BE041"],["LOCKED IN","#FF48B0"],["FR FR","#fff"]];
+    const a = stk[n%5], b = stk[(n+2)%5];
+    return `<div class="art rot"><span class="stk s1" style="background:${a[1]}">${a[0]}</span><span class="hl">${text}</span><span class="stk s2" style="background:${b[1]}">${b[0]}</span></div>`; }
+  if(c==="outrage") return `<div class="art outrage"><span class="tag">BREAKING</span><span class="hl">${text}</span><span class="src">Tap to read the full story</span></div>`;
+  if(c==="cute") return `<div class="art cute"><span class="reel"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M7 4l13 8-13 8z" fill="#fff"/></svg>0:${10+(n%7)*7}</span><span class="hl">${text}</span></div>`;
+  if(c==="compare") return `<div class="art compare"><span class="sun"></span><span class="hl">${text}</span></div>`;
+  if(c==="friends"){
+    const sky = ["#7EC8E3","#F4A259","#9AD1D4","#C3B1E1","#F7D774"][n%5];
+    return `<div class="art friends"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="100" fill="${sky}"/><circle cx="74" cy="26" r="10" fill="#FFF3C4"/><path d="M0 78 L26 42 L44 66 L62 36 L100 80 V100 H0Z" fill="#2E6B5E"/><path d="M0 88 L30 70 L58 86 L82 72 L100 84 V100 H0Z" fill="#1F4C43"/></svg><span class="hl">${text}</span></div>`;
+  }
+  return `<div class="art learn"><span class="num">1/6</span><span class="hl">${text}</span><span class="swipe">swipe &rarr;</span></div>`;
+}
+function pickCat(exclude){
+  const keys = Object.keys(CATS).filter(k=>!exclude.includes(k) || Math.random()<.5);
+  const ws = keys.map(k=>Math.pow(S.weights[k],1.7)); let r = Math.random()*ws.reduce((a,b)=>a+b,0);
+  for(let i=0;i<keys.length;i++){ r-=ws[i]; if(r<=0) return keys[i]; } return keys[keys.length-1];
+}
+const AGOS = ["12m","1h","3h","5h","1d","2d"];
+function postHTML(c){
+  const L = POSTS[c].length, idx = S.used[c] % L, loop = Math.floor(S.used[c]/L), p = POSTS[c][idx]; S.used[c]++; S.pid++;
+  const nC = parseInt(exact(p[3],loop).replace(/,/g,""),10);
+  return `<article class="ig" data-cat="${c}" data-pid="${S.pid}">
+    <div class="ig-h"><span class="pav" style="background:${CATS[c].color}">${initials(p[0])}</span>
+      <span class="n"><b>${p[0]}</b> <span class="t">· ${AGOS[(idx+loop)%6]}</span>${(typeof p[4]==="object"&&p[4].sub||CATS[c].sub)?`<small>${typeof p[4]==="object"&&p[4].sub||CATS[c].sub}</small>`:""}</span><span class="more" aria-hidden="true">${ICON.more}</span></div>
+    <button class="media" type="button" data-like aria-label="Like ${p[0]}'s post">${art(c,p[4],idx+loop)}<span class="bigheart">${ICON.big}</span></button>
+    <div class="actions">
+      <button class="like" type="button" data-like aria-label="Like">${ICON.heart}</button>
+      <span aria-hidden="true">${ICON.comment}</span><span aria-hidden="true">${ICON.share}</span>
+      ${c==="learn"&&typeof p[4]!=="object"?`<span class="cdots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>`:""}
+      <span class="save" aria-hidden="true">${ICON.save}</span></div>
+    <p class="likes" data-likes="${exact(p[2],loop)}">${exact(p[2],loop)} likes</p>
+    <p class="cap"><b>${p[0]}</b> ${p[1]}</p>
+    <p class="vc">${nC===1?"View 1 comment":`View all ${exact(p[3],loop)} comments`}</p>
+    <p class="add">Add a comment...</p>
+  </article>`;
+}
+function loadBatch(){
+  if(!S || S.over) return;
+  const chosen=[]; for(let i=0;i<3;i++) chosen.push(pickCat(chosen));
+  let html = "", hitCaught = false;
+  chosen.forEach(c=>{
+    html += postHTML(c); S.seen++;
+    if(!S.caught && S.seen === CAUGHT_UP_AFTER){
+      S.caught = hitCaught = true;
+      html += `<div class="caught"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="33" fill="none" stroke="var(--pink)" stroke-width="3"/><path d="M22 37l9 9 19-20" fill="none" stroke="var(--pink)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <b>You're all caught up</b><span>You've seen all new posts from the past 3 days.</span><button class="linkbtn" type="button" data-logoff>Close the app</button></div><div class="sugg-h">Suggested posts</div>`;
+    }
+  });
+  $("feed").insertAdjacentHTML("beforeend", html);
+  $$("#feed .ig:not([data-obs])").forEach(a=>{ a.dataset.obs = "1"; vis.observe(a); });
+  if(S.seen > 6 && Math.random() < .2) setDot(true);
+  if(hitCaught) setTimeout(()=>newTrick("caught"), 1500);
+}
+
+function like(article){
+  if(S.over || article.classList.contains("liked")) return;
+  article.classList.add("liked","pop");
+  setTimeout(()=>article.classList.remove("pop"), 800);
+  const L = article.querySelector(".likes"), n = parseInt(L.dataset.likes.replace(/,/g,""),10);
+  L.textContent = `${(n+1).toLocaleString("en-US")} likes`;
+  const c = article.dataset.cat;
+  const repeats = S.history.filter(x=>x===c).length;
+  const fx = CATS[c].fx, mul = Math.max(.35, 1 - repeats*.18);
+  for(const k in fx) S.stats[k] = clamp(S.stats[k] + (k==="dopa" && fx[k]>0 ? fx[k]*mul : fx[k]));
+  S.weights[c] += 1.6; S.history.push(c); S.tricks++;
+  if(repeats>=2 && !S.seenTricks.has("echo")){ S.seenTricks.add("echo"); setTrick(EXTRA_TRICKS.echo); }
+  else setTrick(CATS[c].tip);
+  if(Math.random() < .55){ setDot(true); if(S.history.length>=3 && !S.seenTricks.has("notif")) setTimeout(()=>newTrick("notif"), 4200); }
+  renderAll();
+  if(S.history.length >= LIKES_TO_FINISH){ S.over = true; setTimeout(()=>finish("likes"), 1100); }
+}
+
+function resultKey(s, reason){
+  if(reason==="logoff" && S.secs < 90) return "limited";
+  const b = START_LEVELS;
+  const scores = {dopa:(s.dopa-b.dopa-5)*.75, dep:(s.dep-b.dep)*.55, anx:(s.anx-b.anx)*.8, proc:(s.proc-b.proc)*.6, mood:(b.mood-s.mood)*1.25};
+  const top = Object.keys(scores).sort((a,c)=>scores[c]-scores[a])[0];
+  return scores[top] < 6 ? "limited" : top;
+}
+function finish(reason){
+  S.over = true;
+  const s = S.stats, key = resultKey(s, reason), R = RESULTS[key], C = CREWBY[R.crew], on = S.minutes - START;
+  GROUP.push({name:S.name, key, minutes:on, secs:S.secs, seen:S.seen, likes:S.history.length}); saveGroup();
+  $("resWho").textContent = `${S.name}'s brain result`;
+  $("resAv").innerHTML = figure(C.id, R.face, C.color, true);
+  $("resChem").innerHTML = key==="limited" ? `Logged off` : `${C.chem} <span class="pill" style="background:${C.color}">${R.level}</span>`;
+  $("takeaway").textContent = TAKEAWAY;
+  $("resTag").textContent = R.tag;
+  const early = S.history.length < LIKES_TO_FINISH ? ` You logged off after ${S.history.length} like${S.history.length===1?"":"s"}.` : "";
+  const why = reason==="time" ? ` Time ran out at ${fmt(S.minutes)}.` : "";
+  $("resText").textContent = `${R.text} You scrolled for ${clock(S.secs)} of real time (until ${fmt(S.minutes)} on the clock) and saw ${S.seen} posts.${why}${reason==="time"?"":early}`;
+  $("finals").innerHTML = CREW.map(c=>{ const v = Math.round(s[c.id]); return `<div class="final"><span class="av">${figure(c.id,mood(c.id,v),c.color,true)}</span><b>${v}</b><span>${c.chem}</span></div>`; }).join("");
+  const counts = {}; S.history.forEach(c=>counts[c]=(counts[c]||0)+1);
+  const keys = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  $("bubble").innerHTML = keys.length ? keys.map(k=>`<i style="flex:${counts[k]};background:${CATS[k].color}"></i>`).join("") : `<i style="flex:1;background:var(--elev)"></i>`;
+  $("legend").innerHTML = keys.length ? keys.map(k=>`<span style="--c:${CATS[k].color}">${CATS[k].label} × ${counts[k]}</span>`).join("") : "<span>You didn't like anything.</span>";
+  renderActivity();
+  show("resV"); $("nextP").focus();
+}
+
+function show(id){ ["startV","resV","grpV"].forEach(v=>$(v).hidden = v!==id); }
+function hideAll(){ ["startV","resV","grpV"].forEach(v=>$(v).hidden = true); }
+function openStart(){
+  $("startEb").textContent = `Player ${GROUP.length+1}`;
+  $("startGroup").hidden = GROUP.length === 0;
+  $("pname").value = "";
+  show("startV"); setTimeout(()=>$("pname").focus(), 30);
+}
+function g_label(R){ return R===RESULTS.limited ? "Logged off" : `${CREWBY[R.crew].chem} ${R.level.toLowerCase()}`; }
+function openGroup(){
+  const n = GROUP.length;
+  $("grpN").textContent = `${n} player${n===1?"":"s"}`;
+  const counts = {}; GROUP.forEach(g=>counts[g.key]=(counts[g.key]||0)+1);
+  $("tally").innerHTML = n ? Object.keys(RESULTS).filter(k=>counts[k]).sort((a,b)=>counts[b]-counts[a]).map(k=>{
+    const R = RESULTS[k], C = CREWBY[R.crew];
+    return `<div class="tal"><span class="av">${figure(C.id, R.face, C.color, true)}</span><b>${counts[k]}</b><span>${g_label(R)}<br>${R.tag}</span></div>`;
+  }).join("") : `<div class="tal"><span>No one has played yet.</span></div>`;
+  $("plist").innerHTML = GROUP.map(g=>{
+    const R = RESULTS[g.key], C = CREWBY[R.crew];
+    return `<div class="row"><span class="av">${figure(C.id, R.face, C.color, true)}</span>
+      <div class="txt"><b>${esc(g.name)}</b><span>${g_label(R)} · ${R.tag}</span></div><span class="when">${g.secs!=null?clock(g.secs):dur(g.minutes)} · ${g.seen} posts</span></div>`;
+  }).join("");
+  $("grpClear").textContent = "Clear group results";
+  show("grpV");
+}
+
+$("startF").addEventListener("submit", e=>{ e.preventDefault(); const nm = $("pname").value.trim(); hideAll(); newGame(nm); });
+$("startGroup").addEventListener("click", openGroup);
+$("nextP").addEventListener("click", openStart);
+$("resGroup").addEventListener("click", openGroup);
+$("openGroup").addEventListener("click", openGroup);
+$("grpNext").addEventListener("click", openStart);
+$("grpClose").addEventListener("click", ()=>{ if(S && S.over) openStart(); else hideAll(); });
+$("grpClear").addEventListener("click", e=>{
+  if(e.currentTarget.textContent !== "Tap again to clear"){ e.currentTarget.textContent = "Tap again to clear"; return; }
+  GROUP = []; saveGroup(); renderActivity(); openGroup();
+});
+document.addEventListener("click", e=>{
+  if(e.target.closest("[data-logoff]")){ if(S && !S.over){ S.over = true; finish("logoff"); } return; }
+  const b = e.target.closest("[data-like]"); if(b && S) like(b.closest(".ig"));
+});
+
+/* infinite scroll: load more whenever the spinner gets close to the screen */
+/* which posts are actually on screen right now */
+const onScreen = new Set();
+const vis = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{ if(en.isIntersecting) onScreen.add(en.target); else onScreen.delete(en.target); });
+}, {threshold:.6});
+
+/* the timer: every real second on the app changes your brain, even if you never tap anything */
+function paused(){ return !S || S.over || document.hidden || !$("startV").hidden || !$("resV").hidden || !$("grpV").hidden; }
+setInterval(()=>{
+  if(paused()) return;
+  S.secs++; S.minutes = START + S.secs;
+  const st = S.stats;
+  st.dep  = clamp(st.dep + PASSIVE.dependency);
+  st.proc = clamp(st.proc + PASSIVE.procrastination);
+  st.mood = clamp(st.mood + PASSIVE.mood);
+  st.dopa = clamp(st.dopa + PASSIVE.dopamine);
+  onScreen.forEach(a=>{
+    if(a.classList.contains("liked")) return;
+    const id = a.dataset.pid, c = a.dataset.cat, d = S.dwell[id] = (S.dwell[id]||0) + 1;
+    if(d <= PASSIVE.lookMax){
+      const fx = CATS[c].fx;
+      for(const k in fx) st[k] = clamp(st[k] + fx[k]*PASSIVE.lookShare);
+      S.weights[c] += .2;                      // the feed learns from what you look at, too
+    }
+    if(d === 3) newTrick("dwell");
+  });
+  if(Math.random() < .04) setDot(true);
+  renderCrew(); renderActivity();
+  if(S.secs % 5 === 0) renderStories();
+  if(S.secs >= MAX_SECONDS){ S.over = true; finish("time"); }
+}, 1000);
+
+const io = new IntersectionObserver(entries=>{
+  if(entries.some(en=>en.isIntersecting) && S && !S.over){
+    loadBatch(); renderActivity();
+    requestAnimationFrame(()=>{ io.unobserve($("sentinel")); io.observe($("sentinel")); });
+  }
+}, {rootMargin:"0px 0px 900px 0px"});
+
+$("srcList").innerHTML = Object.values(SOURCES).map(x=>`<li><a href="${x.url}" target="_blank" rel="noopener">${x.title}</a></li>`).join("");
+newGame("");       // a live feed sits behind the start screen
+openStart();
+io.observe($("sentinel"));
+</script>
+
+</body>
+</html>
