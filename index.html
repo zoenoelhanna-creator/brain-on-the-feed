@@ -292,6 +292,9 @@ main{display:flex;min-height:100vh}
 .int{display:grid;grid-template-columns:84px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:12px}
 .int .bar{height:4px}
 .int em{font-style:normal;text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
+.disc{margin:0;color:var(--soft);font-size:12px;line-height:17px}
+.disc-m{display:none}
+@media (max-width:999px){.disc-m{display:block}}
 .foot{color:var(--soft);font-size:12px;line-height:16px;padding:0 4px}
 
 /* toast for narrow screens */
@@ -424,6 +427,11 @@ main{display:flex;min-height:100vh}
       <ol class="srcs" id="srcList"></ol>
     </section>
 
+    <section class="card">
+      <div class="sh"><h2>AI disclosure</h2></div>
+      <p class="disc">This game was built with help from Claude, an AI assistant made by Anthropic. Claude helped write the code, the sample posts, and the wording of the explanations. The game idea was chosen by our Pod, and every fact comes from our Research Documentation. All accounts and posts in the feed are made up.</p>
+    </section>
+
     <div class="foot"><button class="linkbtn" type="button" id="openGroup">Group results</button> · <span id="groupCount">0 players so far</span></div>
   </aside>
 </main>
@@ -449,6 +457,7 @@ main{display:flex;min-height:100vh}
       </div>
       <div class="field"><label for="pname">Your name</label><input id="pname" name="pname" maxlength="24" autocomplete="off" placeholder="e.g. Zoe"></div>
       <span class="hint" id="startHint">Results from everyone who plays are saved on this computer until you clear them.</span>
+      <span class="hint disc-m">AI disclosure: built with help from Claude, an AI assistant by Anthropic, which helped write the code, sample posts, and explanation wording. The idea and all facts are from our Pod's Research Documentation. All accounts and posts are made up.</span>
     </div>
     <button class="m-btn primary" type="submit">Start scrolling</button>
     <button class="m-btn" type="button" id="startGroup" hidden>See group results</button>
